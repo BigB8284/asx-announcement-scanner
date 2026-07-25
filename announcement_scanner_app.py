@@ -41,46 +41,40 @@ ASX_ANNOUNCEMENTS_URL = "https://www.asx.com.au/asx/v2/statistics/todayAnns.do"
  
  
 def fetch_todays_announcements():
-    """Fetch and parse today's ASX announcements list. Returns a list of
-    dicts: {time, code, title, price_sensitive}."""
+    """Fetch today's market-sensitive ASX announcements via Apify."""
+    apify_token = st.secrets.get("APIFY_API_TOKEN") if hasattr(st, "secrets") else None
+    if not apify_token:
+        return None, "No Apify API token found in Streamlit Secrets (add APIFY_API_TOKEN)."
+
     try:
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-        response = requests.get(ASX_ANNOUNCEMENTS_URL, headers=headers, timeout=15)
+        url = f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/run-sync-get-dataset-items"
+        params = {"token": apify_token}
+        payload = {"marketSensitiveOnly": True, "maxResults": 20}  # kept low - this actor charges ~$0.05/announcement and has no date filter
+
+        response = requests.post(url, params=params, json=payload, timeout=120)
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
- 
+        items = response.json()
+
+        today_str = datetime.now().strftime("%Y-%m-%d")
         announcements = []
-        table = soup.find("table")
-        if table is None:
-            return None, "Couldn't find the announcements table on the page - ASX may have changed their page layout."
- 
-        rows = table.find_all("tr")
-        for row in rows:
-            cells = row.find_all("td")
-            if len(cells) < 3:
+        for item in items:
+            company = item.get("company_name", "").strip()
+            headline = item.get("headline", "").strip()
+            time_str = item.get("announcement_time", "")
+            ann_date = item.get("announcement_date", "")
+            if today_str not in str(ann_date):
                 continue
-            time_str = cells[0].get_text(strip=True)
-            code = cells[1].get_text(strip=True)
-            title_cell = cells[2]
-            title = title_cell.get_text(strip=True)
-            # ASX marks price-sensitive announcements with a "*" or similar
-            # marker next to the title - check for common indicators
-            price_sensitive = "*" in title or "price sensitive" in title.lower() or bool(title_cell.find("b"))
-            title_clean = title.replace("*", "").strip()
- 
-            if code and title_clean:
+            if company and headline:
                 announcements.append({
                     "time": time_str,
-                    "code": code,
-                    "title": title_clean,
-                    "price_sensitive": price_sensitive,
+                    "company": company,
+                    "title": headline,
                 })
- 
         return announcements, None
     except requests.exceptions.RequestException as e:
-        return None, f"Couldn't reach ASX's announcements page: {e}"
+        return None, f"Couldn't reach Apify: {e}"
     except Exception as e:
-        return None, f"Something went wrong parsing the page: {e}"
+        return None, f"Something went wrong processing the results: {e}"
  
  
 def analyze_announcements(price_sensitive_list):
