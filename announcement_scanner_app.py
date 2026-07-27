@@ -93,21 +93,29 @@ def analyze_announcements(announcement_list):
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=500,
-            system=(
+system=(
                 "You are helping a discretionary ASX day trader who needs to act fast. "
                 "You will be given a list of today's market-sensitive ASX announcement "
                 "headlines (company: headline). From this list, pick exactly ONE headline "
                 "that looks most likely to move its stock UP (a long idea) and exactly "
                 "ONE that looks most likely to move its stock DOWN (a short idea). "
                 "If nothing looks clearly bullish, say so instead of forcing a pick - same "
-                "for bearish. Do NOT invent a confidence score or percentage. For each pick, "
-                "give: the company name, a terse one-line reason (under 15 words), and note "
-                "if the headline alone feels ambiguous or would benefit from reading the full "
-                "document. Format your response as:\n\n"
+                "for bearish. Do NOT invent a confidence score or percentage. "
+                "IMPORTANT EXCLUSIONS: ignore any announcement about a trading halt, "
+                "suspension from quotation, or reinstatement to quotation - these stocks "
+                "aren't currently tradeable, so they're not actionable ideas regardless of "
+                "the news content. Also, prefer picking DIFFERENT companies for the long "
+                "and short idea where reasonably possible - only pick the same company for "
+                "both if there is genuinely no other qualifying candidate for one side. "
+                "Do NOT use markdown formatting (no asterisks, no bold) - plain text only, "
+                "this will be displayed as-is. For each pick, give: the company name, a "
+                "terse one-line reason (under 15 words), and note if the headline alone "
+                "feels ambiguous or would benefit from reading the full document. Format "
+                "your response as:\n\n"
                 "LONG: [company] - [reason]\n"
                 "SHORT: [company] - [reason]\n\n"
                 "If no clear long or short candidate exists, write 'LONG: None found' or "
-                "'SHORT: None found' instead."
+                "'SHORT: None found' instead."            
             ),
             messages=[{"role": "user", "content": listing}],
         )
