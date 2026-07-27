@@ -149,6 +149,6 @@ if st.button("Scan Announcements", type="primary", use_container_width=True):
         with st.expander(f"See all {len(announcements)} market-sensitive announcements today"):
             for a in announcements:
                 st.caption(f"{a['time']} — **{a['company']}**: {a['title']}")
-    else:
+else:
     st.info("Tap 'Scan Announcements' to check today's filings.")
  
