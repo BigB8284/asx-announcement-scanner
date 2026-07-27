@@ -29,10 +29,12 @@ PDF text. Reading full documents is a bigger v2 build.
 import streamlit as st
 import requests
 from datetime import datetime
+from zoneinfo import ZoneInfo
  
 st.set_page_config(page_title="ASX Announcement Scanner", layout="centered")
  
 APIFY_ACTOR = "nexgendata~asx-company-announcements"
+SYDNEY_TZ = ZoneInfo("Australia/Sydney")
  
  
 def fetch_todays_announcements():
@@ -50,7 +52,7 @@ def fetch_todays_announcements():
         response.raise_for_status()
         items = response.json()
  
-        today_str = datetime.now().strftime("%Y-%m-%d")
+        today_str = datetime.now(SYDNEY_TZ).strftime("%Y-%m-%d")
         announcements = []
         for item in items:
             company = item.get("company_name", "").strip()
@@ -112,15 +114,14 @@ def analyze_announcements(announcement_list):
         return response.content[0].text, None
     except Exception as e:
         return None, f"AI analysis failed: {e}"
-
-
+ 
  
 st.title("ASX Announcement Scanner")
 st.caption("Run at 9:30am and again at 9:50am. Shows one top long pick and one top short pick.")
  
 if st.button("Scan Announcements", type="primary", use_container_width=True):
-    now = datetime.now()
-    st.write(f"**Scanned:** {now.strftime('%d %b %Y, %I:%M %p')}")
+    now = datetime.now(SYDNEY_TZ)
+    st.write(f"**Scanned:** {now.strftime('%d %b %Y, %I:%M %p')} AEST")
  
     with st.spinner("Fetching today's ASX announcements..."):
         announcements, fetch_error = fetch_todays_announcements()
@@ -148,6 +149,6 @@ if st.button("Scan Announcements", type="primary", use_container_width=True):
         with st.expander(f"See all {len(announcements)} market-sensitive announcements today"):
             for a in announcements:
                 st.caption(f"{a['time']} — **{a['company']}**: {a['title']}")
-else:
+    else:
     st.info("Tap 'Scan Announcements' to check today's filings.")
-  
+ 
